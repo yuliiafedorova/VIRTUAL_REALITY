@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Textured Hyperboloid of Revolution</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #fovBlock, #clippingBlock {
+            position: absolute;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 5px;
+        }
+        #fovBlock { top: 10px; left: 10px; }
+    </style>
+</head>
+<body>
+    <div id="fovBlock">
+        <label for="fovInput">Field of View (FOV):</label>
+        <input type="range" id="fovInput" min="1" max="179" value="75">
+        <span id="fovValue">75</span>
+        <br>
+        <label for="nearClipInput">Near Clipping Distance:</label>
+        <input type="range" id="nearClipInput" min="1" max="1000" value="10" step="1">
+        <span id="nearClipValue">10</span>
+        <br>
+        <label for="farClipInput">Far Clipping Distance:</label>
+        <input type="range" id="farClipInput" min="1" max="1000" value="300" step="1">
+        <span id="farClipValue">300</span>
+        <br>
+        <label for="eyeSeparationInput">Eye Separation:</label>
+        <input type="range" id="eyeSeparationInput" min="0" max="10" value="1" step="0.01">
+        <span id="eyeSeparationValue">1</span>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./build/three.module.js",
+                "three/addons/": "./"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { Anaglyph } from 'three/addons/Anaglyph.js';
+        import { ParametricGeometry } from 'three/addons/ParametricGeometry.js';
+
+        let isMouseDown = false;
+        let container, camera, scene, renderer, effect, hyperboloid, videoTexture;
+
+        // Sensor data
+        let gyroscopeData = { alpha: 0, beta: 0, gamma: 0 };
+        let accelerometerData = { x: 0, y: 0, z: 0 };
+        let magnetometerData = { x: 0, y: 0, z: 0 };
+
+        // Set up event listeners for sensor data
+        window.addEventListener('deviceorientation', handleOrientation);
+        window.addEventListener('devicemotion', handleMotion);
+        window.addEventListener('compassneedscalibration', handleCompassCalibration);
+
+        function handleOrientation(event) {
+            gyroscopeData.alpha = event.alpha;
+            gyroscopeData.beta = event.beta;
+            gyroscopeData.gamma = event.gamma;
+        }
+
+        function handleMotion(event) {
+            accelerometerData.x = event.acceleration.x;
+            accelerometerData.y = event.acceleration.y;
+            accelerometerData.z = event.acceleration.z;
+        }
+
+        function handleCompassCalibration(event) {
+            // Use the compassneedscalibration event to request calibration if needed
+            // This event is not standard, and its effectiveness may vary across devices
+            alert('Compass needs calibration. Please calibrate your device.');
+        }
+
+        init();
+        animate();
+    
+       // Add FOV input elements
+        const fovInput = document.getElementById('fovInput');
+        const fovValue = document.getElementById('fovValue');
+
+        // Set initial FOV value
+        fovValue.textContent = camera.fov;
+        fovInput.value = camera.fov;
+
+        // Add event listener for FOV input changes
+        fovInput.addEventListener('input', function () {
+            const newFOV = parseInt(fovInput.value);
+            camera.fov = newFOV;
+            camera.updateProjectionMatrix();
+            fovValue.textContent = newFOV;
+        });
+        // Add near and far clipping distance input elements
+        const nearClipInput = document.getElementById('nearClipInput');
+        const farClipInput = document.getElementById('farClipInput');
+        const nearClipValue = document.getElementById('nearClipValue');
+        const farClipValue = document.getElementById('farClipValue');
+
+        // Set initial values
+        nearClipValue.textContent = camera.near;
+        nearClipInput.value = camera.near;
+        farClipValue.textContent = camera.far;
+        farClipInput.value = camera.far;
+
+        // Add event listeners for near and far clipping distance changes
+        nearClipInput.addEventListener('input', function () {
+            const newNearClip = parseFloat(nearClipInput.value);
+            camera.near = newNearClip;
+            camera.updateProjectionMatrix();
+            nearClipValue.textContent = newNearClip;
+        });
+
+        farClipInput.addEventListener('input', function () {
+            const newFarClip = parseFloat(farClipInput.value);
+            camera.far = newFarClip;
+            camera.updateProjectionMatrix();
+            farClipValue.textContent = newFarClip;
+        });
+        
+        
+
+
+    
+    function init(){
+    container = document.createElement('div');
+    document.body.appendChild(container);
+
+            // Create a scene
+    scene = new THREE.Scene();
+
+    // Create a camera
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.z = 200;
+    
+     // Create video element
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.loop = true;
+        video.srcObject = null; // Set to null initially
+
+        // Get user media
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(function (stream) {
+                video.srcObject = stream;
+            })
+            .catch(function (error) {
+                console.error('Unable to access the camera.', error);
+            });
+
+        videoTexture = new THREE.VideoTexture(video);
+        videoTexture.minFilter = THREE.LinearFilter;
+        videoTexture.magFilter = THREE.LinearFilter;
+
+        scene = new THREE.Scene();
+        scene.background = videoTexture; // Use video texture as the background
+
+    // Create a hyperboloid geometry
+   const geometry = createHyperboloid(20, 20, 80, 50);
+    // Load a texture
+    const textureLoader = new THREE.TextureLoader();
+    const texture = textureLoader.load('./textures/golfball.jpg');
+    
+    // Create a material with the texture and set side to DoubleSide
+    const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+    
+    // Create a mesh with the hyperboloid geometry and material
+    hyperboloid = new THREE.Mesh(geometry, material);
+    
+    // Add the hyperboloid to the scene
+    scene.add(hyperboloid);
+    // Add animation
+
+    
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const width = window.innerWidth || 2;
+        const height = window.innerHeight || 2;
+
+        effect = new Anaglyph(renderer,0.5, 1);
+        console.log(effect);
+
+        effect.setSize(width, height);
+    
+    
+        window.addEventListener('mousedown', onMouseDown);
+        window.addEventListener('mouseup', onMouseUp);
+        window.addEventListener('mousemove', onMouseMove);
+        
+                // Add eye separation input elements
+        const eyeSeparationInput = document.getElementById('eyeSeparationInput');
+        const eyeSeparationValue = document.getElementById('eyeSeparationValue');
+
+        // Set initial eye separation value
+        eyeSeparationValue.textContent = effect.eyeSeparation;
+        eyeSeparationInput.value = effect.eyeSeparation;
+
+        // Add event listener for eye separation input changes
+        eyeSeparationInput.addEventListener('input', function () {
+            const newEyeSeparation = parseFloat(eyeSeparationInput.value);
+            effect = new Anaglyph(renderer, newEyeSeparation);
+            effect.setSize(width, height);
+            eyeSeparationValue.textContent = newEyeSeparation;
+        });
+
+    }
+    
+    function animate() {
+            requestAnimationFrame(animate);
+
+            // Use sensor fusion to calculate orientation
+            const rotationMatrix = calculateRotationMatrix();
+            const euler = new THREE.Euler().setFromRotationMatrix(rotationMatrix);
+
+            // Update hyperboloid rotation based on sensor fusion
+            hyperboloid.rotation.x = euler.x;
+            hyperboloid.rotation.y = euler.y;
+            hyperboloid.rotation.z = euler.z;
+
+            effect.render(scene, camera);
+    }
+    
+     function calculateRotationMatrix() {
+            // Use sensor fusion algorithms to combine gyroscope, accelerometer, and magnetometer data
+            // You may implement your own sensor fusion algorithm or use existing libraries
+
+            // For simplicity, we'll use a basic sensor fusion algorithm (not recommended for production)
+            const alpha = gyroscopeData.alpha * (Math.PI / 180);
+            const beta = gyroscopeData.beta * (Math.PI / 180);
+            const gamma = gyroscopeData.gamma * (Math.PI / 180);
+
+            const rotationMatrix = new THREE.Matrix4();
+            rotationMatrix.makeRotationFromEuler(new THREE.Euler(beta, alpha, -gamma, 'XYZ'));
+
+            return rotationMatrix;
+        }
+    
+    function render() {
+        const timer = 0.0001 * Date.now();
+
+
+        effect.render(scene, camera);
+    }
+
+     function onMouseDown(event) {
+        isMouseDown = true;
+        onPointerDownPointerX = event.clientX;
+        onPointerDownPointerY = event.clientY;
+        onPointerDownLon = camera.rotation.y;
+        onPointerDownLat = camera.rotation.x;
+    }
+
+    function onMouseUp() {
+        isMouseDown = false;
+    }
+
+function onMouseMove(event) {
+    if (isMouseDown) {
+        var lon = (onPointerDownPointerX - event.clientX) * 0.1 + onPointerDownLon;
+        var lat = (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
+        lat = Math.max(-85, Math.min(85, lat));
+
+        var rotationSpeed = 0.005;
+        hyperboloid.rotation.x += lon * rotationSpeed;
+        hyperboloid.rotation.y += lat * rotationSpeed;
+
+        onPointerDownPointerX = event.clientX;
+        onPointerDownPointerY = event.clientY;
+        onPointerDownLon = lon;
+        onPointerDownLat = lat;
+    }
+}
+    function createHyperboloid(a, b, height, segments) {
+      const geometry = new ParametricGeometry((u, v, target) => {
+        const theta = u * 2 * Math.PI;
+        const y = v * height - height / 2;
+        const x = a * Math.sqrt(1 + (y * y) / (b * b)) * Math.cos(theta);
+        const z = a * Math.sqrt(1 + (y * y) / (b * b)) * Math.sin(theta);
+        target.set(x, y, z);
+      }, segments, segments);
+
+      return geometry;
+    }
+
+</script>
+</body>
+</html>
