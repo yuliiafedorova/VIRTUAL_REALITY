@@ -7,5 +7,6 @@ PA2: https://tbz.xdx.mybluehost.me/.website_f9975c5e/vr/lab2.html
 ![image](https://github.com/yuliiafedorova/VIRTUAL_REALITY/assets/123180097/c1580e3c-21fb-410b-b71c-957918b15901)
 PA3:
 https://github.com/yuliiafedorova/VIRTUAL_REALITY/assets/123180097/e5e47dd9-d7ec-46e3-bb4e-2bd8d5a31ab9
+
 PA4: https://tbz.xdx.mybluehost.me/.website_f9975c5e/vr/lab4.html
 
