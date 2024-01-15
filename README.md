@@ -12,3 +12,4 @@ PA4: https://tbz.xdx.mybluehost.me/.website_f9975c5e/vr/lab4.html
 
 Calculation&graphics work: https://tbz.xdx.mybluehost.me/.website_f9975c5e/vr/RGR.html
 ![image](https://github.com/yuliiafedorova/VIRTUAL_REALITY/assets/123180097/dacc8a3c-9cf3-416b-b4e5-ad8050c94a20)
+[ТР-21мн, ФедороваЮлія РГР.docx](https://github.com/yuliiafedorova/VIRTUAL_REALITY/files/13938002/-21.docx)
