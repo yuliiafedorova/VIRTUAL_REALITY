@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Textured Hyperboloid of Revolution</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #fovBlock, #clippingBlock {
+            position: absolute;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 5px;
+        }
+        #fovBlock { top: 10px; left: 10px; }
+    </style>
+</head>
+<body>
+    <div id="fovBlock">
+    <button id="audioButton">Play</button>
+
+    <!-- Checkbox to toggle bandpass filter -->
+    <input type="checkbox" id="filterCheckbox">
+    <label for="filterCheckbox">highshelf filter</label>
+    </div>
+
+ <script type="importmap">
+        {
+            "imports": {
+                "three": "./build/three.module.js",
+                "three/addons/": "./"
+            }
+        }
+    </script>
+    <script type="module">
+        import * as THREE from 'three';
+        import { Anaglyph } from 'three/addons/Anaglyph.js';
+        import { ParametricGeometry } from 'three/addons/ParametricGeometry.js';
+
+    let container, camera, scene, renderer, effect;
+    const objects = [];
+    const textureLoader = new THREE.TextureLoader();
+    let sliderValue = 0;
+    let audioContext, audioSource, audioGain, audioElement, highshelfFilter;
+    let audioStarted = false;
+    let filterEnabled = false;
+
+    initialize();
+    startAnimation();
+
+    function initialize() {
+        container = document.createElement('div');
+        document.body.appendChild(container);
+
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
+        camera.position.z = 200;
+
+        scene = new THREE.Scene();
+
+        // Add hyperboloid
+        const texture = textureLoader.load('./textures/golfball.jpg');
+        const material = new THREE.MeshBasicMaterial({ map: texture, side: THREE.DoubleSide });
+        const geometry = createHyperboloid(20, 20, 80, 50);
+        const hyperboloid = new THREE.Mesh(geometry, material);
+        scene.add(hyperboloid);
+        objects.push(hyperboloid);
+
+        // Add wireframe sphere
+        const redMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+        const redSphereGeometry = new THREE.SphereGeometry(15, 32, 32);
+        const redSphere = new THREE.Mesh(redSphereGeometry, redMaterial);
+        scene.add(redSphere);
+        objects.push(redSphere);
+
+
+        // Initialize Web Audio API
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Load audio file
+        audioElement = new Audio('./textures/SadSvit.mp3');
+        audioElement.crossOrigin = 'anonymous';
+        audioSource = audioContext.createMediaElementSource(audioElement);
+
+        // BiquadFilterNode - highshelf Filter
+        highshelfFilter = audioContext.createBiquadFilter();
+        highshelfFilter.type = 'highshelf';
+        highshelfFilter.frequency.value = 500; // Задайте бажану частоту
+        highshelfFilter.gain.value = 20; // Задайте бажане підсилення
+
+        audioGain = audioContext.createGain();
+        audioGain.gain.value = 0.5;
+
+        highshelfFilter.connect(audioGain);
+        audioGain.connect(audioContext.destination);
+
+        // Button to start audio after user interaction
+        const audioButton = document.getElementById('audioButton');
+        audioButton.addEventListener('click', beginAudio);
+
+        // Checkbox to toggle highshelf filter
+        const filterCheckbox = document.getElementById('filterCheckbox');
+        filterCheckbox.addEventListener('change', switchFilter);
+
+        // Check filter state and set filter by default
+        if (filterEnabled) {
+            audioSource.connect(highshelfFilter);
+            filterCheckbox.checked = true;
+        } else {
+            audioSource.connect(audioGain);
+        }
+
+        renderer = new THREE.WebGLRenderer();
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+
+        const width = window.innerWidth || 2;
+        const height = window.innerHeight || 2;
+
+        effect = new Anaglyph(renderer, 0.064);
+        effect.setSize(width, height);
+    }
+
+    function onSliderChange(event) {
+        sliderValue = parseFloat(event.target.value);
+    }
+
+    function beginAudio() {
+        if (!audioStarted) {
+            audioContext.resume().then(() => {
+                audioElement.play();
+                audioStarted = true;
+            });
+        }
+    }
+
+    function switchFilter() {
+        filterEnabled = !filterEnabled;
+
+        if (filterEnabled) {
+            audioSource.disconnect();
+            audioSource.connect(highshelfFilter);
+        } else {
+            audioSource.disconnect();
+            audioSource.connect(audioGain);
+        }
+    }
+
+    function resizeWindow() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        effect.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function startAnimation() {
+        requestAnimationFrame(startAnimation);
+        renderScene();
+    }
+
+    function renderScene() {
+        const timer = 0.0001 * Date.now();
+    
+        // Update hyperboloid position
+        const hyperboloid = objects.find(obj => obj instanceof THREE.Mesh && obj.geometry instanceof ParametricGeometry);
+        if (hyperboloid) {
+            hyperboloid.rotation.y = timer;
+        }
+    
+        // Update red sphere position to move automatically in a circle
+        const redSphere = objects.find(obj => obj instanceof THREE.Mesh && obj.geometry instanceof THREE.SphereGeometry);
+        if (redSphere && hyperboloid) {
+            const angle = timer*10;
+            const radius = 100;
+            redSphere.position.x = hyperboloid.position.x + radius * Math.cos(angle);
+            redSphere.position.y = 0;
+            redSphere.position.z = radius * Math.sin(angle);
+    
+            // Update audio spatialization based on the red sphere's position
+            const distance = redSphere.position.distanceTo(camera.position);
+            const maxDistance = 1000;
+            const volume = Math.pow(1 - Math.min(distance / maxDistance, 1), 5);
+            audioGain.gain.value = volume;
+        }
+    
+        effect.render(scene, camera);
+    }
+
+     function createHyperboloid(a, b, height, segments) {
+      const geometry = new ParametricGeometry((u, v, target) => {
+        const theta = u * 2 * Math.PI;
+        const y = v * height - height / 2;
+        const x = a * Math.sqrt(1 + (y * y) / (b * b)) * Math.cos(theta);
+        const z = a * Math.sqrt(1 + (y * y) / (b * b)) * Math.sin(theta);
+        target.set(x, y, z);
+      }, segments, segments);
+
+      return geometry;
+    }
+</script>
+</body>
+</html>
