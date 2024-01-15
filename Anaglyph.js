@@ -16,7 +16,7 @@ class Anaglyph {
 
   constructor( renderer, eyeSeparation = 0.064, width = 512, height = 512) {
 
-    // Dubois matrices from https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.7.6968&rep=rep1&type=pdf#page=4
+    // Dubois matrices
 
     this.colorMatrixLeft = new Matrix3().fromArray( [
       0.456100, - 0.0400822, - 0.0152161,

@@ -27,7 +27,7 @@
         
         <br>
         
-                <label for="nearClipInput">Near Clipping Distance:</label>
+        <label for="nearClipInput">Near Clipping Distance:</label>
         <input type="range" id="nearClipInput" min="1" max="1000" value="10" step="1">
         <span id="nearClipValue">10</span>
 
@@ -40,7 +40,7 @@
         <br>
         
         <label for="eyeSeparationInput">Eye Separation:</label>
-        <input type="range" id="eyeSeparationInput" min="0" max="10" value="1" step="0.01">
+        <input type="range" id="eyeSeparationInput" min="-1" max="30" value="1" step="0.01">
         <span id="eyeSeparationValue">1</span>
     </div>
 
@@ -113,16 +113,12 @@
             camera.updateProjectionMatrix();
             farClipValue.textContent = newFarClip;
         });
-        
-        
 
-
-    
     function init(){
     container = document.createElement('div');
     document.body.appendChild(container);
 
-            // Create a scene
+    // Create a scene
     scene = new THREE.Scene();
 
     // Create a camera
@@ -130,7 +126,7 @@
     camera.position.z = 200;
 
     // Create a hyperboloid geometry
-   const geometry = createHyperboloid(20, 20, 80, 50);
+    const geometry = createHyperboloid(20, 20, 80, 50);
     // Load a texture
     const textureLoader = new THREE.TextureLoader();
     const texture = textureLoader.load('./textures/golfball.jpg');
@@ -144,8 +140,6 @@
     // Add the hyperboloid to the scene
     scene.add(hyperboloid);
     // Add animation
-
-    
         renderer = new THREE.WebGLRenderer();
         renderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(renderer.domElement);
@@ -163,7 +157,7 @@
         window.addEventListener('mouseup', onMouseUp);
         window.addEventListener('mousemove', onMouseMove);
         
-                // Add eye separation input elements
+        // Add eye separation input elements
         const eyeSeparationInput = document.getElementById('eyeSeparationInput');
         const eyeSeparationValue = document.getElementById('eyeSeparationValue');
 
@@ -180,6 +174,7 @@
         });
 
     }
+
     // Start the animation
     function animate(){
         requestAnimationFrame(animate);
@@ -188,11 +183,8 @@
     
     function render() {
         const timer = 0.0001 * Date.now();
-
-
         effect.render(scene, camera);
     }
-
      function onMouseDown(event) {
         isMouseDown = true;
         onPointerDownPointerX = event.clientX;
@@ -205,22 +197,23 @@
         isMouseDown = false;
     }
 
-function onMouseMove(event) {
-    if (isMouseDown) {
-        var lon = (onPointerDownPointerX - event.clientX) * 0.1 + onPointerDownLon;
-        var lat = (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
-        lat = Math.max(-85, Math.min(85, lat));
+    function onMouseMove(event) {
+        if (isMouseDown) {
+            var lon = (event.clientX - onPointerDownPointerX) * 0.1 + onPointerDownLon;
+            var lat = (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
+            lat = Math.max(-85, Math.min(85, lat));
 
-        var rotationSpeed = 0.005;
-        hyperboloid.rotation.x += lon * rotationSpeed;
-        hyperboloid.rotation.y += lat * rotationSpeed;
+            var rotationSpeed = 0.005;
+            hyperboloid.rotation.y += lon * rotationSpeed;
+            hyperboloid.rotation.x += lat * rotationSpeed;
 
-        onPointerDownPointerX = event.clientX;
-        onPointerDownPointerY = event.clientY;
-        onPointerDownLon = lon;
-        onPointerDownLat = lat;
+            onPointerDownPointerX = event.clientX;
+            onPointerDownPointerY = event.clientY;
+            onPointerDownLon = lon;
+            onPointerDownLat = lat;
+        }
     }
-}
+
     function createHyperboloid(a, b, height, segments) {
       const geometry = new ParametricGeometry((u, v, target) => {
         const theta = u * 2 * Math.PI;
