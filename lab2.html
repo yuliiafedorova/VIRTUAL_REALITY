@@ -227,22 +227,23 @@
         isMouseDown = false;
     }
 
-function onMouseMove(event) {
-    if (isMouseDown) {
-        var lon = (onPointerDownPointerX - event.clientX) * 0.1 + onPointerDownLon;
-        var lat = (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
-        lat = Math.max(-85, Math.min(85, lat));
+    function onMouseMove(event) {
+        if (isMouseDown) {
+            var lon = (event.clientX - onPointerDownPointerX) * 0.1 + onPointerDownLon;
+            var lat = (event.clientY - onPointerDownPointerY) * 0.1 + onPointerDownLat;
+            lat = Math.max(-85, Math.min(85, lat));
 
-        var rotationSpeed = 0.005;
-        hyperboloid.rotation.x += lon * rotationSpeed;
-        hyperboloid.rotation.y += lat * rotationSpeed;
+            var rotationSpeed = 0.005;
+            hyperboloid.rotation.y += lon * rotationSpeed;
+            hyperboloid.rotation.x += lat * rotationSpeed;
 
-        onPointerDownPointerX = event.clientX;
-        onPointerDownPointerY = event.clientY;
-        onPointerDownLon = lon;
-        onPointerDownLat = lat;
+            onPointerDownPointerX = event.clientX;
+            onPointerDownPointerY = event.clientY;
+            onPointerDownLon = lon;
+            onPointerDownLat = lat;
+        }
     }
-}
+    
     function createHyperboloid(a, b, height, segments) {
       const geometry = new ParametricGeometry((u, v, target) => {
         const theta = u * 2 * Math.PI;
